@@ -1,5 +1,6 @@
 package by.bntu.fitr.poisit.lytkina.englishLearnBot.service;
 
+import by.bntu.fitr.poisit.lytkina.englishLearnBot.bean.User;
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.bean.Word;
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.buttonHandler.ButtonHandler;
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.enums.BotCommands;
@@ -32,6 +33,10 @@ public class RequestDispatcher {
     Word word;
     @Autowired
     WordService wordService;
+    @Autowired
+    UserService userService;
+    @Autowired
+    User user;
 
     private String msgText;
 
@@ -40,6 +45,11 @@ public class RequestDispatcher {
     private static String englishWord = "";
 
     public void dispatch(Update update) {
+        if (!userService.checkIfPersonDataExist(update.getMessage())){
+            user.setId(update.getMessage().getFrom().getId());
+            user.setName(update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
+            userService.saveUser(user);
+        }
         switch (getCommand(update)) {
             case HELP:
                 messageService.sendMessage(update.getMessage(), helpProcessor.run());
