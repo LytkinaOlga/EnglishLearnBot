@@ -43,13 +43,14 @@ public class RequestDispatcher {
     private static String state = "";
     private static String russianWord = "";
     private static String englishWord = "";
+    private static boolean flag = false;
 
     public void dispatch(Update update) {
+        user = userService.getCurrentUser(update);
         if (!userService.checkIfPersonDataExist(update.getMessage())){
-            user.setId(update.getMessage().getFrom().getId());
-            user.setName(update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
             userService.saveUser(user);
         }
+
         switch (getCommand(update)) {
             case HELP:
                 messageService.sendMessage(update.getMessage(), helpProcessor.run());
@@ -78,7 +79,19 @@ public class RequestDispatcher {
                 messageService.sendMessage(update.getMessage(), "Введите слово");
                 state ="input_russian_word";
                 break;
-
+            case FIND_WORD_BY_ENGLISH:
+                messageService.sendMessage(update.getMessage(), "Введите слово");
+                state ="input_english_word";
+                break;
+            case RETURN_ENGLISH_WORD:
+                messageService.sendMessage(update.getMessage(), wordService.findByRussianWord(update.getMessage().getText().toLowerCase(), user));
+                break;
+            case RETURN_RUSSIAN_WORD:
+                messageService.sendMessage(update.getMessage(), wordService.findByEnglishWord(update.getMessage().getText().toLowerCase(), user));
+                break;
+            case RETURN_ALL_WORDS:
+                messageService.sendMessage(update.getMessage(), wordService.findAllWords(user));
+                break;
         }
     }
 
@@ -86,19 +99,24 @@ public class RequestDispatcher {
         if (update.hasMessage()) {
             Message message = update.getMessage();
             if (message != null && message.hasText()) {
-                String msgText = message.getText();
+                String msgText = message.getText().toLowerCase();
                 if (msgText.startsWith(BotCommands.HELP.getCommand())) {
                     return BotCommands.HELP;
                 } else if (msgText.startsWith(BotCommands.START.getCommand())) {
                     return BotCommands.START;
                 } else if (msgText.startsWith(BotCommands.SETTING.getCommand())) {
                     return BotCommands.SETTING;
-                } else if (msgText.startsWith("Добавить слово-перевод")){
+                } else if (msgText.startsWith("добавить слово-перевод")){
                     return BotCommands.ADD_WORD;
-                } else if(msgText.startsWith("Найти слово (вводить русское)")){
+                } else if(msgText.startsWith("найти слово (вводить русское)")){
                     return BotCommands.FIND_WORD_BY_RUSSIAN;
+                }else if(msgText.startsWith("найти слово (вводить английское)")) {
+                    return BotCommands.FIND_WORD_BY_ENGLISH;
+                }else if(msgText.startsWith("мой словарь")){
+                    return BotCommands.RETURN_ALL_WORDS;
                 }else if (state.equals("ask_russian_word")){
                     word.setRussianWord(msgText);
+                    word.setUser(user);
                     wordService.saveWord(word);
                     return BotCommands.ADD_ENGLISH_WORD;
                 } else if (state.equals("ask_english_word")){
@@ -106,8 +124,9 @@ public class RequestDispatcher {
                     wordService.saveWord(word);
                     return BotCommands.PROCESS_DONE;
                 } else if (state.equals("input_russian_word")) {
-                    messageService.sendMessage(update.getMessage(), wordService.findByRussianWord(msgText));
-                    return BotCommands.PROCESS_DONE;
+                    return BotCommands.RETURN_ENGLISH_WORD;
+                } else if (state.equals("input_english_word")){
+                    return BotCommands.RETURN_RUSSIAN_WORD;
                 }
             }
         } else if (update.hasCallbackQuery()){

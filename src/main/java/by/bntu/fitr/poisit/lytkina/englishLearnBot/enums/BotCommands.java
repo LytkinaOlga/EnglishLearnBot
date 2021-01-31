@@ -8,6 +8,10 @@ public enum  BotCommands {
     ADD_ENGLISH_WORD("/add_word_english"),
     PROCESS_DONE,
     FIND_WORD_BY_RUSSIAN,
+    FIND_WORD_BY_ENGLISH,
+    RETURN_ENGLISH_WORD,
+    RETURN_RUSSIAN_WORD,
+    RETURN_ALL_WORDS,
     NONE("/none");
 
     String command;
