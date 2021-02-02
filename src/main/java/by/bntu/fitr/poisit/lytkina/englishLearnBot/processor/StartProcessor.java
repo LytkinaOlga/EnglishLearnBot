@@ -6,6 +6,6 @@ import org.springframework.stereotype.Service;
 public class StartProcessor implements Processor {
     @Override
     public String run() {
-        return "Hello! This bot help you improve your English vocabulary";
+        return "Привет! Теперь ты можешь создать свой персональный словарь. Добавляй слова и я помогу тебе их выучить:) Увидимся на тренировках!";
     }
 }

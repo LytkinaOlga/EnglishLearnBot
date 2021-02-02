@@ -37,6 +37,8 @@ public class RequestDispatcher {
     UserService userService;
     @Autowired
     User user;
+    @Autowired
+    ValidationService validationService;
 
     private String msgText;
 
@@ -92,6 +94,9 @@ public class RequestDispatcher {
             case RETURN_ALL_WORDS:
                 messageService.sendMessage(update.getMessage(), wordService.findAllWords(user));
                 break;
+            case INCORRECT_INPUT:
+                messageService.sendMessage(update.getMessage(), "Некорректный язык ввода");
+                break;
         }
     }
 
@@ -115,14 +120,19 @@ public class RequestDispatcher {
                 }else if(msgText.startsWith("мой словарь")){
                     return BotCommands.RETURN_ALL_WORDS;
                 }else if (state.equals("ask_russian_word")){
-                    word.setRussianWord(msgText);
-                    word.setUser(user);
-                    wordService.saveWord(word);
-                    return BotCommands.ADD_ENGLISH_WORD;
+                    if (validationService.checkIfTextInRussian(msgText)){
+                        word.setRussianWord(msgText);
+                        return BotCommands.ADD_ENGLISH_WORD;
+                    }else return BotCommands.INCORRECT_INPUT;
+
+
                 } else if (state.equals("ask_english_word")){
-                    word.setEnglishWord(msgText);
-                    wordService.saveWord(word);
-                    return BotCommands.PROCESS_DONE;
+                    if (validationService.checkIfTextInEnglish(msgText)){
+                        word.setEnglishWord(msgText);
+                        word.setUser(user);
+                        wordService.saveWord(word);
+                        return BotCommands.PROCESS_DONE;
+                    }else return BotCommands.INCORRECT_INPUT;
                 } else if (state.equals("input_russian_word")) {
                     return BotCommands.RETURN_ENGLISH_WORD;
                 } else if (state.equals("input_english_word")){
