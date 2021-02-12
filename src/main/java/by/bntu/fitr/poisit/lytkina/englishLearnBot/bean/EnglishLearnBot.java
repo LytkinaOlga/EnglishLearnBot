@@ -1,6 +1,7 @@
 package by.bntu.fitr.poisit.lytkina.englishLearnBot.bean;
 
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.service.RequestDispatcher;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
@@ -20,6 +21,7 @@ public class EnglishLearnBot extends TelegramLongPollingBot {
     @Value("${bot.token}")
     private String botToken;
 
+    @SneakyThrows
     @Override
     public void onUpdateReceived(Update update) {
         requestDispatcher.dispatch(update);

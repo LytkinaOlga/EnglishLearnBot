@@ -1,8 +1,11 @@
 package by.bntu.fitr.poisit.lytkina.englishLearnBot.buttonHandler;
 
+import by.bntu.fitr.poisit.lytkina.englishLearnBot.bean.Word;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
@@ -41,4 +44,5 @@ public class ButtonHandler {
     public SendMessage getButtonMainMenu(long chatId, String text) {
         return new SendMessage(chatId, text).setReplyMarkup(getMainMenuKeyboard());
     }
+
 }

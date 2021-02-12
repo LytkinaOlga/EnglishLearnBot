@@ -4,15 +4,15 @@ import by.bntu.fitr.poisit.lytkina.englishLearnBot.bean.User;
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.bean.Word;
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.buttonHandler.ButtonHandler;
 import by.bntu.fitr.poisit.lytkina.englishLearnBot.enums.BotCommands;
-import by.bntu.fitr.poisit.lytkina.englishLearnBot.processor.HelpProcessor;
-import by.bntu.fitr.poisit.lytkina.englishLearnBot.processor.NoneProcessor;
-import by.bntu.fitr.poisit.lytkina.englishLearnBot.processor.SettingsProcessor;
-import by.bntu.fitr.poisit.lytkina.englishLearnBot.processor.StartProcessor;
+import by.bntu.fitr.poisit.lytkina.englishLearnBot.processor.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
 
 @Service
 public class RequestDispatcher {
@@ -22,6 +22,8 @@ public class RequestDispatcher {
     @Autowired
     StartProcessor startProcessor;
     @Autowired
+    AddingWordProcessor addingWordProcessor;
+    @Autowired
     HelpProcessor helpProcessor;
     @Autowired
     SettingsProcessor settingsProcessor;
@@ -29,8 +31,7 @@ public class RequestDispatcher {
     NoneProcessor noneProcessor;
     @Autowired
     ButtonHandler buttonHandler;
-    @Autowired
-    Word word;
+
     @Autowired
     WordService wordService;
     @Autowired
@@ -38,7 +39,11 @@ public class RequestDispatcher {
     @Autowired
     User user;
     @Autowired
+    Word word;
+    @Autowired
     ValidationService validationService;
+    @Autowired
+    TrainingService trainingService;
 
     private String msgText;
 
@@ -47,12 +52,12 @@ public class RequestDispatcher {
     private static String englishWord = "";
     private static boolean flag = false;
 
-    public void dispatch(Update update) {
+    public void dispatch(Update update) throws InterruptedException {
+
         user = userService.getCurrentUser(update);
-        if (!userService.checkIfPersonDataExist(update.getMessage())){
+        if (!userService.checkIfPersonDataExist(update)){
             userService.saveUser(user);
         }
-
         switch (getCommand(update)) {
             case HELP:
                 messageService.sendMessage(update.getMessage(), helpProcessor.run());
@@ -64,11 +69,11 @@ public class RequestDispatcher {
                 messageService.sendMessage(update.getMessage(), settingsProcessor.run());
                 break;
             case NONE:
-                messageService.sendMessage(update.getMessage(), noneProcessor.run());
+                 messageService.sendMessage(update.getMessage(), noneProcessor.run());
                 break;
             case ADD_WORD:
-                messageService.sendMessage(update.getMessage(), "Введите слово (русский)");
-                state = "ask_russian_word";
+                messageService.sendMessage(update.getMessage(), addingWordProcessor.run());
+                state = "ask_word";
                 break;
             case ADD_ENGLISH_WORD:
                 messageService.sendMessage(update.getMessage(), "Введите перевод слова");
@@ -92,16 +97,31 @@ public class RequestDispatcher {
                 messageService.sendMessage(update.getMessage(), wordService.findByEnglishWord(update.getMessage().getText().toLowerCase(), user));
                 break;
             case RETURN_ALL_WORDS:
-                messageService.sendMessage(update.getMessage(), wordService.findAllWords(user));
+                messageService.sendMessage(update.getMessage(), wordService.findAllWordsReturnString(user));
                 break;
             case INCORRECT_INPUT:
-                messageService.sendMessage(update.getMessage(), "Некорректный язык ввода");
+                messageService.sendMessage(update.getMessage(), "Некорректный ввод");
                 break;
+            case TRAINING_RUSSIAN_ENGLISH:
+                if (wordService.checkIfExistEnoughWordsForTraining(wordService.findAllWordsReturnList(user))){
+                    trainingService.trainRussianEnglish(user, update);
+                }else messageService.sendMessage(update.getMessage(), "У вас мало слов в словаре. Добавьте еще! (Минимум - 3)");
+
+                break;
+            case TRAINING_ENGLISH_RUSSIAN:
+                if (wordService.checkIfExistEnoughWordsForTraining(wordService.findAllWordsReturnList(user))){
+                    trainingService.trainEnglishRussian(user, update);
+                }else messageService.sendMessage(update.getMessage(), "У вас мало слов в словаре. Добавьте еще! (Минимум - 3)");
+
+                break;
+
         }
     }
 
     private BotCommands getCommand(Update update) {
+
         if (update.hasMessage()) {
+
             Message message = update.getMessage();
             if (message != null && message.hasText()) {
                 String msgText = message.getText().toLowerCase();
@@ -119,20 +139,22 @@ public class RequestDispatcher {
                     return BotCommands.FIND_WORD_BY_ENGLISH;
                 }else if(msgText.startsWith("мой словарь")){
                     return BotCommands.RETURN_ALL_WORDS;
-                }else if (state.equals("ask_russian_word")){
-                    if (validationService.checkIfTextInRussian(msgText)){
-                        word.setRussianWord(msgText);
-                        return BotCommands.ADD_ENGLISH_WORD;
-                    }else return BotCommands.INCORRECT_INPUT;
+                }else if(msgText.startsWith("тренировка (русский - английский)")){
+                    return BotCommands.TRAINING_RUSSIAN_ENGLISH;
+                }else if(msgText.startsWith("тренировка (английский - русский)")){
+                    return BotCommands.TRAINING_ENGLISH_RUSSIAN;
+                }
+                else if (state.equals("ask_word")){
+                    word = validationService.returnWord(msgText);
+                    word.setId(null);
+                    word.setUser(user);
 
+                    if (word.getRussianWord() == null || word.getEnglishWord() == null){
+                        return BotCommands.INCORRECT_INPUT;
 
-                } else if (state.equals("ask_english_word")){
-                    if (validationService.checkIfTextInEnglish(msgText)){
-                        word.setEnglishWord(msgText);
-                        word.setUser(user);
-                        wordService.saveWord(word);
-                        return BotCommands.PROCESS_DONE;
-                    }else return BotCommands.INCORRECT_INPUT;
+                    }else {wordService.saveWord(word);
+                    return BotCommands.PROCESS_DONE;}
+
                 } else if (state.equals("input_russian_word")) {
                     return BotCommands.RETURN_ENGLISH_WORD;
                 } else if (state.equals("input_english_word")){
@@ -141,6 +163,13 @@ public class RequestDispatcher {
             }
         } else if (update.hasCallbackQuery()){
             CallbackQuery buttonQuery = update.getCallbackQuery();
+            if (buttonQuery.getData().equals("RightAnswer")) {
+                messageService.sendMessage( update.getCallbackQuery().getMessage(),"Правильно!");
+                return BotCommands.TRAINING_RUSSIAN_ENGLISH;
+            } else if (buttonQuery.getData().equals("WrongAnswer")){
+               messageService.sendMessage( update.getCallbackQuery().getMessage(), "Неправильно!!");
+                return BotCommands.TRAINING_RUSSIAN_ENGLISH;
+            }
 
         }
         return BotCommands.NONE;

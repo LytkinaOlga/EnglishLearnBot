@@ -6,16 +6,19 @@ import by.bntu.fitr.poisit.lytkina.englishLearnBot.repo.WordRepoI;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Optional;
 @Service
 public class WordService {
     @Autowired
     private WordRepoI wordRepository;
-    private Optional<Word> person;
+
+
 
     void saveWord(Word word){
         wordRepository.save(word);
     }
+
 
     String findByRussianWord(String russianWord, User currentUser){
         Iterable<Word> words = wordRepository.findAll();
@@ -35,7 +38,7 @@ public class WordService {
         }
         return "Не найдено!";
     }
-    String findAllWords(User currentUser){
+    String findAllWordsReturnString(User currentUser){
         String result = "";
         Iterable<Word> words = wordRepository.findAll();
         for (Word word : words) {
@@ -47,5 +50,38 @@ public class WordService {
             result+="Ваш словарь пуст!";
         }
         return result;
+    }
+    ArrayList<Word> findAllWordsReturnList(User currentUser){
+        ArrayList<Word> wordsList= new ArrayList<>();
+        Iterable<Word> words = wordRepository.findAll();
+        for (Word word : words) {
+            if (word.getUser().getId().equals(currentUser.getId())){
+                wordsList.add(word);
+            }
+        }
+
+        return wordsList;
+    }
+
+    boolean checkIfExistEnoughWordsForTraining(ArrayList<Word> words){
+        if (words.size() > 3){
+            return true;
+        }
+        else return false;
+    }
+
+    Word createWordAndAdd(String str){
+        Word word = new Word();
+        String englishWord;
+        String russianWord;
+        int i;
+        i = str.indexOf('-');
+        englishWord = str.substring(0, i);
+
+        russianWord = str.substring(i+1);
+
+        word.setRussianWord(russianWord.replaceAll(" ", ""));
+        word.setEnglishWord(englishWord.replaceAll(" ", ""));
+        return word;
     }
 }

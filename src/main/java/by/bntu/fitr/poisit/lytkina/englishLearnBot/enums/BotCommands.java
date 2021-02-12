@@ -13,6 +13,8 @@ public enum  BotCommands {
     RETURN_RUSSIAN_WORD,
     RETURN_ALL_WORDS,
     INCORRECT_INPUT,
+    TRAINING_RUSSIAN_ENGLISH,
+    TRAINING_ENGLISH_RUSSIAN,
     NONE("/none");
 
     String command;

@@ -15,10 +15,17 @@ public class UserService {
     @Autowired
     User user;
 
-    public boolean checkIfPersonDataExist(Message message) {
-        if (userRepository.existsById(message.getFrom().getId())) {
-            return true;
-        } else return false;
+    public boolean checkIfPersonDataExist(Update update) {
+        if (update.hasMessage()){
+            if (userRepository.existsById(update.getMessage().getFrom().getId())) {
+                return true;
+            } else return false;
+        } else if (update.hasCallbackQuery()){
+            if (userRepository.existsById(update.getCallbackQuery().getFrom().getId())) {
+                return true;
+            } else return false;
+        }
+        return false;
     }
 
     void saveUser(User user){
@@ -26,8 +33,14 @@ public class UserService {
     }
 
     User getCurrentUser(Update update){
-        user.setId(update.getMessage().getFrom().getId());
-        user.setName(update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
+        if (update.hasMessage()){
+            user.setId(update.getMessage().getFrom().getId());
+            user.setName(update.getMessage().getFrom().getFirstName() + " " + update.getMessage().getFrom().getLastName());
+        }else if (update.hasCallbackQuery()){
+            user.setId(update.getCallbackQuery().getFrom().getId());
+            user.setName(update.getCallbackQuery().getFrom().getFirstName() + " " + update.getCallbackQuery().getFrom().getLastName());
+
+        }
         return user;
     }
 
